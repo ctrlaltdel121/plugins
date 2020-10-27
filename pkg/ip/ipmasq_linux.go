@@ -17,6 +17,7 @@ package ip
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
 )
@@ -122,5 +123,7 @@ func isNotExist(err error) bool {
 	if !ok {
 		return false
 	}
-	return e.IsNotExist()
+	// covers an error in iptables when you try and delete a jump rule that doesnt exist and also the chain its jumping to doesn't exist.
+	// This could occur if you ran the DEL command twice.
+	return e.IsNotExist() || e.ExitStatus() == 2 && strings.Contains(e.Error(), "does not exist")
 }

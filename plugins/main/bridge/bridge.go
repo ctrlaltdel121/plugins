@@ -613,6 +613,29 @@ func cmdDel(args *skel.CmdArgs) error {
 	}
 
 	if isLayer3 && n.IPMasq {
+		if len(ipnets) == 0 && n.NetConf.RawPrevResult != nil {
+			// Try and teardown using the IP addresses from the previous result.
+			// This helps if a previous DEL failed in the IPMasq teardown step.
+			// Otherwise, it wouldn't have any ipnets to retry against.
+			if err := version.ParsePrevResult(&n.NetConf); err != nil {
+				return err
+			}
+
+			result, err := current.NewResultFromResult(n.PrevResult)
+			if err != nil {
+				return err
+			}
+			for _, resIP := range result.IPs {
+				if resIP.Interface == nil {
+					continue
+				}
+				if result.Interfaces[*resIP.Interface].Name == args.IfName {
+					cpAddr := resIP.Address
+					ipnets = append(ipnets, &cpAddr)
+				}
+			}
+		}
+
 		chain := utils.FormatChainName(n.Name, args.ContainerID)
 		comment := utils.FormatComment(n.Name, args.ContainerID)
 		for _, ipn := range ipnets {
